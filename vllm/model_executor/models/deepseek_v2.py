@@ -992,19 +992,6 @@ class DeepseekV2MLAAttention(nn.Module):
                 rope_parameters=config.rope_parameters,
                 is_neox_style=not getattr(config, "indexer_rope_interleave", False),
             )
-            self.indexer = Indexer(
-                vllm_config,
-                config,
-                hidden_size,
-                q_lora_rank,
-                quant_config,
-                cache_config,
-                topk_indices_buffer,
-                f"{prefix}.indexer",
-            )
-
-            # IndexCache config
-            # Refer: https://arxiv.org/abs/2603.12201 for more details.
             _index_topk_freq = getattr(config, "index_topk_freq", 1)
             _index_topk_pattern = getattr(config, "index_topk_pattern", None)
             _index_skip_topk_offset = getattr(config, "index_skip_topk_offset", 2)
@@ -1012,11 +999,40 @@ class DeepseekV2MLAAttention(nn.Module):
 
             if _index_topk_pattern is None:
                 _skip_topk = (
-                    max(layer_id - _index_skip_topk_offset + 1, 0) % _index_topk_freq
+                    max(layer_id - _index_skip_topk_offset  1, 0) % _index_topk_freq
                     != 0
                 )
             elif 0 <= layer_id < len(_index_topk_pattern):
                 _skip_topk = _index_topk_pattern[layer_id] == "S"
+            self.indexer = None
+            if not _skip_topk:
+                self.indexer = Indexer(
+                    vllm_config,
+                    config,
+                    hidden_size,
+                    q_lora_rank,
+                    quant_config,
+                    cache_config,
+                    topk_indices_buffer,
+                    f"{prefix}.indexer",
+                )
+
+             # Enable IndexCache for DeepSeek models to reduce redundant top-k
+             # token selection computations in sparse attention.
+            # use_index_cache = getattr(config, "use_index_cache", False)
+            # if use_index_cache:
+            #     # IndexCache config
+            #     # Refer: https://arxiv.org/abs/2603.12201 for more details.
+            #     _index_topk_freq = getattr(config, "index_topk_freq", 1)
+            #     _index_topk_pattern = getattr(config, "index_topk_pattern", None)
+            #     layer_id = extract_layer_index(prefix)
+            #     if _index_topk_pattern is None:
+            #         _skip_topk = max(layer_id - 1, 0) % _index_topk_freq != 0
+            #     elif 0 <= layer_id < len(_index_topk_pattern):
+            #         _skip_topk = _index_topk_pattern[layer_id] == "S"
+
+            # IndexCache config
+            # Refer: https://arxiv.org/abs/2603.12201 for more details.
 
         else:
             self.indexer_rope_emb = None
