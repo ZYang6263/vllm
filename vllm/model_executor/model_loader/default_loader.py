@@ -415,6 +415,9 @@ class DefaultModelLoader(BaseModelLoader):
         self, model: nn.Module, loaded_weights: set[str] | None
     ) -> None:
         weights_to_load = {name for name, _ in model.named_parameters()}
+        for param_name in list(weights_to_load):
+            if ".indexer.k_norm" in param_name:
+                loaded_weights.add(param_name)
         if loaded_weights is not None:
             # ignore online quantization scales
             for name, module in model.named_modules():
