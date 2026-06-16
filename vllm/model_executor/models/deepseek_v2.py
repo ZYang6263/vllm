@@ -999,7 +999,7 @@ class DeepseekV2MLAAttention(nn.Module):
 
             if _index_topk_pattern is None:
                 _skip_topk = (
-                    max(layer_id - _index_skip_topk_offset  1, 0) % _index_topk_freq
+                    max(layer_id - _index_skip_topk_offset + 1, 0) % _index_topk_freq
                     != 0
                 )
             elif 0 <= layer_id < len(_index_topk_pattern):
